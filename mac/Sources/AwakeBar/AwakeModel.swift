@@ -165,6 +165,9 @@ final class AwakeModel: ObservableObject {
 
     var statusLine: String {
         if !status.enabled {
+            if status.battery?.onAc == false {
+                return "Off - plug in to keep awake"
+            }
             return "Off - closing the lid sleeps normally"
         }
         if status.endingAt != nil {

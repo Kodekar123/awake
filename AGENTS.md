@@ -34,4 +34,4 @@ Exit codes: `0` success, `1` error, `2` usage error, `3` setup required, `4` no 
 6. Start `awake wait --json` as a background task right after `awake on`. If it exits `0`, the hold is ending. Stop starting work that can't be interrupted, like pushes or deploys, save your progress, and run `awake done`. Sleep freezes local processes rather than killing them, so network work is what's at risk.
 7. If the hold keeps going after a warning, because the charger came back, `ending_at` in `awake status` is null again. Restart `awake wait`.
 8. Size `--grace` to your longest step. You only hear about a warning between steps, so a 10-minute test run needs more than the default 2 minutes.
-9. Never use a flag to get around a battery or grace limit unless the user asked. `awake on` is refused during grace on battery.
+9. Never pass `--allow-battery` unless the user asked. On battery, `awake on` fails with `on_battery`, or `hold_ending` during grace: tell the user instead of working around it.

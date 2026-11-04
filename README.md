@@ -7,7 +7,7 @@ Keep your Mac running with the lid closed. Safe by default, built for humans and
 macOS force-sleeps a laptop when the lid closes, no matter what `caffeinate` says. The only switch that overrides it is `pmset -a disablesleep 1`, which needs root. `awake` wraps that switch with the ergonomics and guardrails it deserves:
 
 - **Auto-off timer by default.** `awake on` keeps the Mac awake for 1 hour and then restores normal sleep on its own (supervised by a `launchd` agent), so a forgotten toggle cannot drain your battery overnight.
-- **Grace period and battery limits.** You get a warning before a hold ends. Hitting 15% battery ends it after the grace period, 5% ends it immediately, and `--end-on-battery` ends it when the charger is unplugged.
+- **Grace period and battery limits.** You get a warning before a hold ends. Unplugging the charger or hitting 15% battery ends it after the grace period, and 5% ends it immediately. `--allow-battery` keeps it going unplugged.
 - **One-time passwordless setup.** `awake setup` installs a sudoers rule scoped to exactly two commands (`pmset -a disablesleep 1` and `... 0`) - nothing else gets elevated, and `awake setup --uninstall` removes it.
 - **Visible state.** The menu bar app shows a sun icon plus a live countdown while active, and notifies when the auto-off fires.
 - **Agent-friendly.** Every command supports `--json`, output follows a stable envelope, and exit codes are meaningful.
@@ -29,7 +29,7 @@ awake on --forever  # no timer - until you run awake off
 awake on 2h --while-pid 1234  # end early when process 1234 exits
 awake on 2h --no-lock         # leave the display on when the lid closes
 awake on 2h --grace 10m       # warn 10 minutes before the hold ends (default 2m)
-awake on 2h --end-on-battery  # end the hold when the charger is unplugged
+awake on 2h --allow-battery   # keep going when the charger is unplugged
 awake on 2h --on-ending "cmd" # run a command when the grace period starts
 awake wait                    # block until the hold starts ending
 awake done                    # cleanup finished: skip the rest of the grace period
@@ -78,7 +78,7 @@ awake off --json       # done early - restore normal sleep
 ## Safety notes
 
 - With awake on, closing the lid and tossing the Mac in a bag keeps it running (heat, battery). That is why the default is a 1-hour timer and `--forever` warns loudly.
-- `awake status` warns when running on battery power.
+- A hold ends when the charger is unplugged, unless you pass `--allow-battery`. `awake on` refuses to start on battery without it.
 - The sudoers rule never allows arbitrary `pmset`, only the two exact disablesleep commands.
 
 ## License

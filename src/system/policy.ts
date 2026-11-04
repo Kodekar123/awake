@@ -1,7 +1,7 @@
 import type { BatteryInfo } from "./pmset.js";
 import type { AwakeState, OnBattery } from "./state.js";
 
-export const DEFAULT_ON_BATTERY: OnBattery = "continue";
+export const DEFAULT_ON_BATTERY: OnBattery = "end";
 export const DEFAULT_GRACE_SECONDS = 120;
 export const BATTERY_FLOOR = 15;
 export const BATTERY_HARD_STOP = 5;

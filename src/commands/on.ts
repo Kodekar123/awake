@@ -40,7 +40,8 @@ export function createOnCommand(): Command {
     .option("--no-lock", "Leave the display on when the lid closes, so the screen won't lock")
     .option("--while-pid <pid>", "End the hold as soon as this process exits")
     .option("--grace <duration>", "Warning before the hold ends (default 2m, 0 for none)")
-    .option("--end-on-battery", "End the hold when the charger is unplugged")
+    .option("--allow-battery", "Keep the hold going on battery power")
+    .option("--end-on-battery", "End the hold when the charger is unplugged (default)")
     .option("--on-ending <command>", "Run this shell command when the grace period starts")
     .addHelpText(
       "after",
@@ -56,8 +57,9 @@ The display turns off when the lid closes and macOS locks the screen with your
 usual "require password" delay. --no-lock leaves the display on instead.
 
 Before a hold ends you get a grace period to wrap up (--grace), started by the
-timer, by hitting 15% battery, or by unplugging with --end-on-battery. At 5% it
-stops with no grace, whatever the flags say. Agents: run awake wait to be told.`,
+timer, by hitting 15% battery, or by unplugging the charger. Plugging back in
+cancels it. --allow-battery keeps the hold going unplugged. At 5% it stops with
+no grace, whatever the flags say. Agents: run awake wait to be told.`,
     )
     .action(async (
       durationArg: string | undefined,
@@ -66,6 +68,7 @@ stops with no grace, whatever the flags say. Agents: run awake wait to be told.`
         lock: boolean;
         whilePid?: string;
         grace?: string;
+        allowBattery?: boolean;
         endOnBattery?: boolean;
         onEnding?: string;
       },
@@ -103,7 +106,16 @@ stops with no grace, whatever the flags say. Agents: run awake wait to be told.`
             : opts.grace === "0"
               ? 0
               : parseDuration(opts.grace);
-        const onBattery = opts.endOnBattery ? "end" : DEFAULT_ON_BATTERY;
+        if (opts.allowBattery && opts.endOnBattery) {
+          throw new CLIError("Pass --allow-battery or --end-on-battery, not both.", {
+            code: "invalid_arguments",
+          });
+        }
+        const onBattery = opts.allowBattery
+          ? "continue"
+          : opts.endOnBattery
+            ? "end"
+            : DEFAULT_ON_BATTERY;
 
         const currentBattery = await getBattery();
         if (readState()?.ending && !currentBattery.on_ac) {
@@ -115,7 +127,7 @@ stops with no grace, whatever the flags say. Agents: run awake wait to be told.`
         if (onBattery === "end" && !currentBattery.on_ac) {
           throw new CLIError("This Mac is on battery, so the hold would end right away.", {
             code: "on_battery",
-            hint: "plug in the charger first",
+            hint: "plug in the charger, or pass --allow-battery if you mean to run on battery",
           });
         }
 
