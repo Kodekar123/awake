@@ -73,6 +73,11 @@ Examples:
               chalk.dim(`    since ${formatClock(new Date(state.enabled_at))}`),
             );
           }
+          if (payload.ending_at) {
+            console.log(
+              `    ${chalk.yellow("▲")} ending at ${chalk.bold(formatClock(new Date(payload.ending_at)))} (${payload.ending_reason})`,
+            );
+          }
           if (forever) {
             console.log(
               `    ${chalk.yellow("▲")} no auto-off timer - remember to run ${chalk.bold("awake off")}`,

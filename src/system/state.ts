@@ -2,11 +2,22 @@ import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node
 import { homedir } from "node:os";
 import { join } from "node:path";
 
+export type OnBattery = "continue" | "end";
+
+export interface Ending {
+  reason: "unplugged" | "battery_low" | "expiring";
+  ends_at: string;
+}
+
 export interface AwakeState {
   enabled_at: string;
   until: string | null;
   no_lock?: boolean;
   while_pid?: number;
+  on_battery: OnBattery;
+  grace_seconds: number;
+  on_ending?: string;
+  ending?: Ending | null;
 }
 
 export function stateDir(): string {

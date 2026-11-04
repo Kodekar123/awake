@@ -14,12 +14,15 @@ struct AwakeStatus: Decodable {
     let since: String?
     let until: String?
     let remainingSeconds: Int?
+    let endingAt: String?
+    let endingReason: String?
     let battery: BatteryInfo?
     let sudoersConfigured: Bool?
 
     static let initial = AwakeStatus(
         enabled: false, managed: false, forever: false,
         since: nil, until: nil, remainingSeconds: nil,
+        endingAt: nil, endingReason: nil,
         battery: nil, sudoersConfigured: nil
     )
 
@@ -163,6 +166,9 @@ final class AwakeModel: ObservableObject {
     var statusLine: String {
         if !status.enabled {
             return "Off - closing the lid sleeps normally"
+        }
+        if status.endingAt != nil {
+            return "Ending soon - grace period running"
         }
         if status.forever {
             return "On until you turn it off"

@@ -8,6 +8,8 @@ export interface StatusPayload {
   since: string | null;
   until: string | null;
   remaining_seconds: number | null;
+  ending_at: string | null;
+  ending_reason: string | null;
   battery: BatteryInfo;
   sudoers_configured: boolean;
 }
@@ -33,6 +35,8 @@ export function buildStatusPayload(
     since: state?.enabled_at ?? null,
     until: state?.until ?? null,
     remaining_seconds: remainingSeconds,
+    ending_at: state?.ending?.ends_at ?? null,
+    ending_reason: state?.ending?.reason ?? null,
     battery,
     sudoers_configured: sudoersConfigured,
   };

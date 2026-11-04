@@ -1,8 +1,10 @@
 import { Command } from "commander";
+import { createDoneCommand } from "./commands/done.js";
 import { createOffCommand } from "./commands/off.js";
 import { createOnCommand } from "./commands/on.js";
 import { createSetupCommand } from "./commands/setup.js";
 import { createStatusCommand } from "./commands/status.js";
+import { createWaitCommand } from "./commands/wait.js";
 import { createWatchCommand } from "./commands/watch.js";
 import { type GlobalFlags, resolveFormat } from "./output/formatter.js";
 import { getBrandingText } from "./ui/branding.js";
@@ -32,6 +34,8 @@ export function createProgram(): Command {
   program.addCommand(createOnCommand());
   program.addCommand(createOffCommand());
   program.addCommand(createStatusCommand());
+  program.addCommand(createWaitCommand());
+  program.addCommand(createDoneCommand());
   program.addCommand(createSetupCommand());
   program.addCommand(createWatchCommand(), { hidden: true });
 
@@ -47,11 +51,13 @@ Examples:
   awake on --forever       # no timer - until you turn it off
   awake off                # back to normal sleep
   awake status --json      # machine-readable state for agents
+  awake wait --json        # block until the hold starts ending
 
 Exit codes:
   0  success
   1  error
-  3  setup required (run awake setup)`,
+  3  setup required (run awake setup)
+  4  no active hold (awake wait)`,
   );
 
   program.action(() => {

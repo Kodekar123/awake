@@ -7,6 +7,7 @@ Keep your Mac running with the lid closed. Safe by default, built for humans and
 macOS force-sleeps a laptop when the lid closes, no matter what `caffeinate` says. The only switch that overrides it is `pmset -a disablesleep 1`, which needs root. `awake` wraps that switch with the ergonomics and guardrails it deserves:
 
 - **Auto-off timer by default.** `awake on` keeps the Mac awake for 1 hour and then restores normal sleep on its own (supervised by a `launchd` agent), so a forgotten toggle cannot drain your battery overnight.
+- **Grace period and battery limits.** You get a warning before a hold ends. Hitting 15% battery ends it after the grace period, 5% ends it immediately, and `--end-on-battery` ends it when the charger is unplugged.
 - **One-time passwordless setup.** `awake setup` installs a sudoers rule scoped to exactly two commands (`pmset -a disablesleep 1` and `... 0`) - nothing else gets elevated, and `awake setup --uninstall` removes it.
 - **Visible state.** The menu bar app shows a sun icon plus a live countdown while active, and notifies when the auto-off fires.
 - **Agent-friendly.** Every command supports `--json`, output follows a stable envelope, and exit codes are meaningful.
@@ -27,6 +28,11 @@ awake on 3h         # stay awake for 3 hours ("30m", "1h30m", "45" = minutes)
 awake on --forever  # no timer - until you run awake off
 awake on 2h --while-pid 1234  # end early when process 1234 exits
 awake on 2h --no-lock         # leave the display on when the lid closes
+awake on 2h --grace 10m       # warn 10 minutes before the hold ends (default 2m)
+awake on 2h --end-on-battery  # end the hold when the charger is unplugged
+awake on 2h --on-ending "cmd" # run a command when the grace period starts
+awake wait                    # block until the hold starts ending
+awake done                    # cleanup finished: skip the rest of the grace period
 awake off           # restore normal sleep now
 awake status        # current state, timer, battery
 ```
@@ -52,11 +58,13 @@ open mac/dist/Awake.app
 ```bash
 awake on 2h --json     # keep the machine up for a long task
 awake status --json    # {"data":{"enabled":true,"until":"...","remaining_seconds":...}}
+awake wait --json      # as a background task: exits when the hold starts ending
+awake done --json      # cleanup finished, skip the rest of the grace period
 awake off --json       # done early - restore normal sleep
 ```
 
 - Success envelope: `{"data": {...}}` on stdout. Errors: `{"error": {"code", "message", "hint"}, "data": null}` on stderr.
-- Exit codes: `0` success, `1` error, `3` setup required (a human must run `awake setup` once in a terminal).
+- Exit codes: `0` success, `1` error, `3` setup required (a human must run `awake setup` once in a terminal), `4` no active hold (`awake wait`).
 - Output is JSON automatically when piped; `--json` forces it.
 
 ## How it works
