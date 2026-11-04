@@ -1,6 +1,6 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { cancelAutoOff } from "../system/launchd.js";
+import { stopWatcher } from "../system/launchd.js";
 import { getBattery, isSleepDisabled } from "../system/pmset.js";
 import { clearState, readState } from "../system/state.js";
 import { buildStatusPayload } from "../system/statusPayload.js";
@@ -37,7 +37,7 @@ Examples:
 
         // Self-heal: state file left behind but the switch is off.
         if (!enabled && state) {
-          await cancelAutoOff();
+          await stopWatcher();
           clearState();
           state = null;
         }

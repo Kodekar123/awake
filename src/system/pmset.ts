@@ -3,6 +3,7 @@ import { SetupRequiredError } from "../utils/errors.js";
 
 const PMSET = "/usr/bin/pmset";
 const SUDO = "/usr/bin/sudo";
+const IOREG = "/usr/sbin/ioreg";
 
 // `pmset -g` only prints a SleepDisabled line when the override is active
 // on recent macOS, so a missing line means sleep works normally.
@@ -20,6 +21,32 @@ export async function setSleepDisabled(disabled: boolean): Promise<void> {
   if (result.code !== 0) {
     throw new SetupRequiredError();
   }
+}
+
+export async function displaySleepNow(): Promise<void> {
+  await exec(PMSET, ["displaysleepnow"], { allowFailure: true });
+}
+
+export async function sleepNow(): Promise<void> {
+  await exec(PMSET, ["sleepnow"], { allowFailure: true });
+}
+
+export interface LidInfo {
+  closed: boolean;
+  causesSleep: boolean;
+}
+
+// causesSleep is No while docked to an external display (clamshell mode).
+export async function getLid(): Promise<LidInfo> {
+  const { stdout } = await exec(
+    IOREG,
+    ["-r", "-k", "AppleClamshellState", "-d", "1"],
+    { allowFailure: true },
+  );
+  return {
+    closed: /"AppleClamshellState" = Yes/.test(stdout),
+    causesSleep: /"AppleClamshellCausesSleep" = Yes/.test(stdout),
+  };
 }
 
 export interface BatteryInfo {

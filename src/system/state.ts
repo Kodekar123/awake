@@ -1,10 +1,12 @@
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
 export interface AwakeState {
   enabled_at: string;
   until: string | null;
+  no_lock?: boolean;
+  while_pid?: number;
 }
 
 export function stateDir(): string {
@@ -32,7 +34,11 @@ export function readState(): AwakeState | null {
 
 export function writeState(state: AwakeState): void {
   mkdirSync(stateDir(), { recursive: true });
-  writeFileSync(stateFile(), `${JSON.stringify(state, null, 2)}\n`);
+  // Atomic: the watcher reads this file every few seconds, and a half-written
+  // file would look like "no hold".
+  const tmp = `${stateFile()}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(state, null, 2)}\n`);
+  renameSync(tmp, stateFile());
 }
 
 export function clearState(): void {

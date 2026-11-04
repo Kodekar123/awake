@@ -7,6 +7,8 @@ import { logFile } from "./state.js";
 
 const LABEL = "com.crafterstation.awake.autooff";
 const LAUNCHCTL = "/bin/launchctl";
+const BOOTSTRAP_ATTEMPTS = 15;
+const BOOTSTRAP_RETRY_MS = 200;
 
 function plistPath(): string {
   return join(homedir(), "Library", "LaunchAgents", `${LABEL}.plist`);
@@ -19,21 +21,12 @@ function xmlEscape(value: string): string {
     .replaceAll(">", "&gt;");
 }
 
-// launchd calendar timers fire only at the start of a minute, and a missed
-// match never re-fires (the next Month/Day/Hour/Minute match is a year out).
-// So schedule the first whole minute at or after `until`; the --if-expired
-// guard then sees now >= until and proceeds.
-function fireDate(until: Date): Date {
-  return new Date(Math.ceil(until.getTime() / 60_000) * 60_000);
-}
-
-function buildPlist(until: Date): string {
+function buildPlist(): string {
   // Re-run the exact same runtime + entrypoint that scheduled this job,
   // so it works for `bun run` in dev and the built dist alike.
   const runtime = process.execPath;
   const entry = resolve(process.argv[1] ?? "");
   const log = logFile();
-  const fire = fireDate(until);
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -45,22 +38,12 @@ function buildPlist(until: Date): string {
   <array>
     <string>${xmlEscape(runtime)}</string>
     <string>${xmlEscape(entry)}</string>
-    <string>off</string>
-    <string>--if-expired</string>
+    <string>watch</string>
   </array>
   <key>RunAtLoad</key>
   <true/>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Month</key>
-    <integer>${fire.getMonth() + 1}</integer>
-    <key>Day</key>
-    <integer>${fire.getDate()}</integer>
-    <key>Hour</key>
-    <integer>${fire.getHours()}</integer>
-    <key>Minute</key>
-    <integer>${fire.getMinutes()}</integer>
-  </dict>
+  <key>KeepAlive</key>
+  <true/>
   <key>StandardOutPath</key>
   <string>${xmlEscape(log)}</string>
   <key>StandardErrorPath</key>
@@ -74,30 +57,40 @@ function uid(): number {
   return process.getuid?.() ?? 501;
 }
 
-export async function scheduleAutoOff(until: Date): Promise<void> {
+export async function startWatcher(): Promise<void> {
   const path = plistPath();
   mkdirSync(join(homedir(), "Library", "LaunchAgents"), { recursive: true });
-  writeFileSync(path, buildPlist(until));
+  writeFileSync(path, buildPlist());
 
   await exec(LAUNCHCTL, ["bootout", `gui/${uid()}/${LABEL}`], {
     allowFailure: true,
   });
-  const result = await exec(LAUNCHCTL, ["bootstrap", `gui/${uid()}`, path], {
-    allowFailure: true,
-  });
-  if (result.code !== 0) {
+
+  // bootout returns before a running watcher has exited, and bootstrap fails
+  // until it has, so give it a moment when replacing a live hold.
+  let code = 1;
+  for (let attempt = 0; attempt < BOOTSTRAP_ATTEMPTS && code !== 0; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, BOOTSTRAP_RETRY_MS));
+    }
+    const result = await exec(LAUNCHCTL, ["bootstrap", `gui/${uid()}`, path], {
+      allowFailure: true,
+    });
+    code = result.code;
+  }
+  if (code !== 0) {
     throw new CLIError(
-      `Could not schedule the auto-off timer (launchctl exited ${result.code}).`,
-      { code: "launchd_failed", hint: "try again, or use awake on --forever" },
+      `Could not start the hold watcher (launchctl exited ${code}).`,
+      { code: "launchd_failed", hint: "try again" },
     );
   }
 }
 
 // Remove the plist BEFORE bootout: when this runs inside the launchd job
-// itself (auto-off), bootout kills our own process instantly - anything
-// after it never executes. Callers must treat cancelAutoOff() as a
+// itself (the watcher), bootout kills our own process instantly - anything
+// after it never executes. Callers must treat stopWatcher() as a
 // potential point of no return and do their cleanup first.
-export async function cancelAutoOff(): Promise<void> {
+export async function stopWatcher(): Promise<void> {
   rmSync(plistPath(), { force: true });
   await exec(LAUNCHCTL, ["bootout", `gui/${uid()}/${LABEL}`], {
     allowFailure: true,

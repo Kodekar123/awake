@@ -3,6 +3,7 @@ import { createOffCommand } from "./commands/off.js";
 import { createOnCommand } from "./commands/on.js";
 import { createSetupCommand } from "./commands/setup.js";
 import { createStatusCommand } from "./commands/status.js";
+import { createWatchCommand } from "./commands/watch.js";
 import { type GlobalFlags, resolveFormat } from "./output/formatter.js";
 import { getBrandingText } from "./ui/branding.js";
 import { isTTY } from "./utils/env.js";
@@ -32,6 +33,7 @@ export function createProgram(): Command {
   program.addCommand(createOffCommand());
   program.addCommand(createStatusCommand());
   program.addCommand(createSetupCommand());
+  program.addCommand(createWatchCommand(), { hidden: true });
 
   program.addHelpText(
     "after",

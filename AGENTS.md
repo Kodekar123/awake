@@ -8,6 +8,8 @@
 | --- | --- | --- |
 | `awake on [duration] --json` | Keep the Mac awake | duration: `30m`, `2h`, `1h30m`, bare number = minutes; default `1h`; re-running reschedules the timer |
 | `awake on --forever --json` | No auto-off | avoid unless the user explicitly wants it |
+| `awake on 2h --while-pid <pid> --json` | Tie the hold to a process | ends when that process exits, or at the timer if sooner |
+| `awake on 2h --no-lock --json` | Keep the display on with the lid closed | also stops the screen locking; only if the user asks |
 | `awake off --json` | Restore normal sleep | idempotent (`reason: "already_off"`) |
 | `awake status --json` | Current state | never requires sudo |
 | `awake setup --check` | Is passwordless setup done? | exit 0 yes, exit 3 no |

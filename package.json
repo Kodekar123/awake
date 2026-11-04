@@ -36,6 +36,7 @@
     "dev": "bun run bin/awake.ts",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
+    "test": "node --test test/*.test.ts",
     "link:global": "bun run build && bun link",
     "changeset:version": "changeset version",
     "changeset:publish": "changeset publish",

@@ -1,9 +1,10 @@
 import chalk from "chalk";
 import { Command } from "commander";
-import { cancelAutoOff } from "../system/launchd.js";
+import { restoreSleep, sleepIfLidClosed } from "../system/hold.js";
+import { stopWatcher } from "../system/launchd.js";
 import { notify } from "../system/notify.js";
-import { getBattery, isSleepDisabled, setSleepDisabled } from "../system/pmset.js";
-import { clearState, readState } from "../system/state.js";
+import { getBattery } from "../system/pmset.js";
+import { readState } from "../system/state.js";
 import { buildStatusPayload } from "../system/statusPayload.js";
 import { isSudoersConfigured } from "../system/sudoers.js";
 import {
@@ -25,7 +26,9 @@ Examples:
   awake off            # back to normal sleep behavior
   awake off --json     # agent-friendly output
 
---if-expired is used internally by the auto-off timer.`,
+With the lid closed, this also puts the Mac to sleep.
+
+--if-expired is kept for timers scheduled by older versions.`,
     )
     .action(async (opts: { ifExpired?: boolean }) => {
       const globals = cmd.parent?.opts() as GlobalFlags;
@@ -48,11 +51,7 @@ Examples:
           }
         }
 
-        const wasEnabled = await isSleepDisabled();
-        if (wasEnabled) {
-          await setSleepDisabled(false);
-        }
-        clearState();
+        const wasEnabled = await restoreSleep();
 
         const reason = opts.ifExpired
           ? "expired"
@@ -96,9 +95,13 @@ Examples:
           console.log("");
         }
 
+        if (wasEnabled) {
+          await sleepIfLidClosed();
+        }
+
         // Last: when invoked by the launchd job itself, bootout kills this
         // very process - everything above must already be done.
-        await cancelAutoOff();
+        await stopWatcher();
       } catch (error) {
         handleError(error, format);
       }

@@ -6,7 +6,7 @@ Keep your Mac running with the lid closed. Safe by default, built for humans and
 
 macOS force-sleeps a laptop when the lid closes, no matter what `caffeinate` says. The only switch that overrides it is `pmset -a disablesleep 1`, which needs root. `awake` wraps that switch with the ergonomics and guardrails it deserves:
 
-- **Auto-off timer by default.** `awake on` keeps the Mac awake for 1 hour and then restores normal sleep on its own (via a `launchd` agent), so a forgotten toggle cannot drain your battery overnight.
+- **Auto-off timer by default.** `awake on` keeps the Mac awake for 1 hour and then restores normal sleep on its own (supervised by a `launchd` agent), so a forgotten toggle cannot drain your battery overnight.
 - **One-time passwordless setup.** `awake setup` installs a sudoers rule scoped to exactly two commands (`pmset -a disablesleep 1` and `... 0`) - nothing else gets elevated, and `awake setup --uninstall` removes it.
 - **Visible state.** The menu bar app shows a sun icon plus a live countdown while active, and notifies when the auto-off fires.
 - **Agent-friendly.** Every command supports `--json`, output follows a stable envelope, and exit codes are meaningful.
@@ -25,6 +25,8 @@ awake setup              # one-time: authorizes passwordless toggling
 awake on            # stay awake for 1 hour (default)
 awake on 3h         # stay awake for 3 hours ("30m", "1h30m", "45" = minutes)
 awake on --forever  # no timer - until you run awake off
+awake on 2h --while-pid 1234  # end early when process 1234 exits
+awake on 2h --no-lock         # leave the display on when the lid closes
 awake off           # restore normal sleep now
 awake status        # current state, timer, battery
 ```
@@ -59,7 +61,9 @@ awake off --json       # done early - restore normal sleep
 
 ## How it works
 
-- `awake on` runs `sudo -n pmset -a disablesleep 1` (allowed passwordless by the sudoers rule from setup), records state in `~/Library/Application Support/awake/`, and installs a `launchd` agent (`com.crafterstation.awake.autooff`) that runs `awake off --if-expired` at the deadline - and also at login, in case the deadline passed while the machine was off.
+- `awake on` runs `sudo -n pmset -a disablesleep 1` (allowed passwordless by the sudoers rule from setup), records state in `~/Library/Application Support/awake/`, and starts a `launchd` agent (`com.crafterstation.awake.autooff`) that watches the hold every few seconds for as long as it lasts. launchd restarts it after a crash or at login, and it compares real timestamps, so a missed deadline is caught on the next check.
+- When the lid closes during a hold, the watcher runs `pmset displaysleepnow`. macOS then locks the screen using your usual "require password" delay. `--no-lock` skips this, which leaves the display on.
+- When a hold ends with the lid closed, awake runs `pmset sleepnow`. Neither step runs when docked to an external display.
 - `awake off` flips the switch back, removes the launchd agent, and clears state.
 - The menu bar app polls `awake status --json` and shells out to the same CLI for toggles, so both surfaces always agree.
 
