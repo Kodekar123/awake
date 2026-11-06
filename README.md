@@ -73,7 +73,7 @@ awake off --json       # done early - restore normal sleep
 - When the lid closes during a hold, the watcher runs `pmset displaysleepnow`. macOS then locks the screen using your usual "require password" delay. `--no-lock` skips this, which leaves the display on.
 - When a hold ends with the lid closed, awake runs `pmset sleepnow`. Neither step runs when docked to an external display.
 - `awake off` flips the switch back, removes the launchd agent, and clears state.
-- The menu bar app polls `awake status --json` and shells out to the same CLI for toggles, so both surfaces always agree.
+- The menu bar app watches the state directory, with a slow `awake status --json` poll as a fallback, and shells out to the same CLI for toggles, so both surfaces always agree.
 
 ## Safety notes
 

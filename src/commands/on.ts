@@ -168,6 +168,9 @@ no grace, whatever the flags say. Agents: run awake wait to be told.`,
           throw toggleError;
         }
 
+        // The menu bar app watches this file, and sleep has only just changed.
+        writeState(state);
+
         const battery = await getBattery();
 
         if (format === "json") {

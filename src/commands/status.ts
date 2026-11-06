@@ -2,6 +2,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { stopWatcher } from "../system/launchd.js";
 import { getBattery, isSleepDisabled } from "../system/pmset.js";
+import { isLeftoverState } from "../system/policy.js";
 import { clearState, readState } from "../system/state.js";
 import { buildStatusPayload } from "../system/statusPayload.js";
 import { isSudoersConfigured } from "../system/sudoers.js";
@@ -36,7 +37,7 @@ Examples:
         const sudoersConfigured = isSudoersConfigured();
 
         // Self-heal: state file left behind but the switch is off.
-        if (!enabled && state) {
+        if (isLeftoverState(enabled, state, Date.now())) {
           await stopWatcher();
           clearState();
           state = null;

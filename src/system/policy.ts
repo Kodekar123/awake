@@ -5,6 +5,7 @@ export const DEFAULT_ON_BATTERY: OnBattery = "end";
 export const DEFAULT_GRACE_SECONDS = 120;
 export const BATTERY_FLOOR = 15;
 export const BATTERY_HARD_STOP = 5;
+const HOLD_STARTUP_MS = 30_000;
 
 export type EndingReason = "unplugged" | "battery_low" | "expiring";
 export type EndReason =
@@ -36,6 +37,17 @@ function isLow(battery: BatteryInfo, limit: number): boolean {
 
 function ended(reason: EndingReason): EndReason {
   return reason === "expiring" ? "expired" : reason;
+}
+
+// `awake on` writes the state before it disables sleep, so state with sleep
+// still enabled only counts as left behind once that hold had time to start.
+export function isLeftoverState(
+  enabled: boolean,
+  state: AwakeState | null,
+  now: number,
+): boolean {
+  if (enabled || !state) return false;
+  return now - new Date(state.enabled_at).getTime() >= HOLD_STARTUP_MS;
 }
 
 // Pure decision logic for the watcher, kept free of I/O so it can be tested

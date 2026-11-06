@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { decide } from "../src/system/policy.ts";
+import { decide, isLeftoverState } from "../src/system/policy.ts";
 
 const NOW = Date.parse("2026-11-04T12:00:00Z");
 const iso = (offsetSeconds) => new Date(NOW + offsetSeconds * 1000).toISOString();
@@ -123,4 +123,17 @@ test("timer grace can't be cancelled", () => {
     ending: { reason: "expiring", ends_at: iso(60) },
   });
   assert.deepEqual(decide(state, snap()), { type: "none" });
+});
+
+test("a hold that is still starting is not leftover state", () => {
+  assert.equal(isLeftoverState(false, hold({ enabled_at: iso(-5) }), NOW), false);
+});
+
+test("state from a hold that never took effect is leftover", () => {
+  assert.equal(isLeftoverState(false, hold({ enabled_at: iso(-60) }), NOW), true);
+});
+
+test("state is not leftover while sleep is disabled, or when there is none", () => {
+  assert.equal(isLeftoverState(true, hold(), NOW), false);
+  assert.equal(isLeftoverState(false, null, NOW), false);
 });

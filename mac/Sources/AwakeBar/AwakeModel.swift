@@ -45,6 +45,8 @@ final class AwakeModel: ObservableObject {
 
     private let invocation: [String]?
     private var timer: Timer?
+    private var stateWatcher: DispatchSourceFileSystemObject?
+    private var pendingRefresh: Task<Void, Never>?
 
     init() {
         invocation = Self.resolveInvocation()
@@ -52,6 +54,39 @@ final class AwakeModel: ObservableObject {
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refresh() }
+        }
+        watchStateDirectory()
+    }
+
+    // Holds also change outside this app (`awake off` in a terminal, the
+    // watcher ending one), and all of those rewrite or remove state.json. It's
+    // replaced by rename, so watch the directory rather than the file. The
+    // timer above stays as a fallback for changes that skip the state file.
+    private func watchStateDirectory() {
+        let directory = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Application Support/awake")
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let descriptor = open(directory.path, O_EVTONLY)
+        guard descriptor >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: descriptor, eventMask: .write, queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            Task { @MainActor in self?.scheduleRefresh() }
+        }
+        source.setCancelHandler { close(descriptor) }
+        source.resume()
+        stateWatcher = source
+    }
+
+    // A single state change fires several events (temp file, then rename).
+    private func scheduleRefresh() {
+        pendingRefresh?.cancel()
+        pendingRefresh = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            guard !Task.isCancelled else { return }
+            self?.refresh()
         }
     }
 
